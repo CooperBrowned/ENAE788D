@@ -225,16 +225,28 @@ def size_vehicle(delta_v1, stage1_idx, stage2_idx):
         raise RuntimeError("stage 1 engine diameter exceeds limit")
     if (stage2_vars["n_engines"])*(EXHAUST_DIAMETER_STAGE_2[stage2_idx]/2)**2*math.pi > (DIAMETER[1]/2)**2*math.pi:
         raise RuntimeError("stage 2 engine diameter exceeds limit")
-    return stage1_mass, stage2_mass, stage1_mass + stage2_mass + M_PAYLOAD
+    cost = 13.52 * (stage1_mass - stage1_vars["propellant_mass"])**0.55 + 13.52 * (stage2_mass - stage2_vars["propellant_mass"])**0.55
+    return stage1_mass, stage2_mass, stage1_mass + stage2_mass + M_PAYLOAD, cost, stage1_vars, stage2_vars
 
 
 if __name__ == "__main__":
+    stage_1_idx = 1
+    stage_2_idx = 0
+    #deltaV1 = 5720
+    deltaV1 = 6396
+    results = []
     #itterate from deltaV = 1000 to 10000
-    for DIAMETER[0] in np.linspace(5.2, 15, 10):
+    
+    for DIAMETER[0] in np.linspace(5.2, 15, 100):
         DIAMETER[1] = DIAMETER[0]
-        for delta_v1 in np.linspace(1000, 12000, 100):
-            # catch the unconverged error and print it normally
-            try:
-                print(size_vehicle(delta_v1, 1, 1))
-            except RuntimeError as e:
-                print(e)
+        try:
+            results.append([DIAMETER[0],size_vehicle(deltaV1, stage_1_idx, stage_2_idx)])
+        except RuntimeError as e:
+            print(e)
+    #finds the minimum overall mass with the corresponding diameter
+    min_mass_d, min_mass_r = min(results, key=lambda r: r[1][2])
+    print("Minimum overall mass:", min_mass_r[2]/1000, "at diameter:", min_mass_d)
+    print(min_mass_r)
+    min_cost_d, min_cost_r = min(results, key=lambda r: r[1][3])
+    print("Minimum cost:", min_cost_r[3]/1000, "at diameter:", min_cost_d)
+    print(min_cost_r)
