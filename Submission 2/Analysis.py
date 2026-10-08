@@ -1,4 +1,5 @@
 import math
+import numpy as np
 
 #givens
 G0 = 9.81              
@@ -19,7 +20,6 @@ CHAMBER_PRESSURE_STAGE_1 = [35.16, 20.64, 25.8, 10.5, 15.7]
 CHAMBER_PRESSURE_STAGE_2 = [10.1, 4.2, 6.77, 5.0, 14.7]
 NOZZLE_EXPANSION_STAGE_1 = [34.34, 78.0, 37.0, 16.0, 26.2]
 NOZZLE_EXPANSION_STAGE_2 = [45.0, 84.0, 14.5, 56.0, 81.3]
-RHO_PROPELLANT = [71.0, 1140.0, 820.0, 423.0, 1680.0, 1442.0, 791.0]
 SIGMA = [0.067, 0.075, 0.063, 0.087, 0.061]
 ISP_SEA = [327.0, 366.0, 311.0, 269.0, 285.0]
 ISP_VAC = [380.0, 452.0, 337.0, 279.0, 316.0]
@@ -40,13 +40,12 @@ PAYLOAD_FAIRING_LENGTH = PAYLOAD_H + NOSECONE_HEIGHT  # cylinder + nosecone (m)
 
 payload_fairing_mass = 4.95*((PAYLOAD_D*math.pi*PAYLOAD_H) + (math.pi*PAYLOAD_D/2)*math.sqrt((PAYLOAD_D/2)**2+(NOSECONE_HEIGHT)**2))**1.15
 
-def update_stage(current_propellant_mass, current_stage_mass, deltaV, propellant_index, stage, payload_mass):
+def update_stage(current_stage_mass, deltaV, propellant_index, stage, payload_mass):
     propellant_mass = get_propellant_mass(stage,propellant_index,current_stage_mass,deltaV)
-    current_stage_mass = current_stage_mass-current_propellant_mass+propellant_mass
     thrust_required = current_stage_mass*G0*TW_MIN[stage]
     tank_mass, tank_length = get_tank_mass(propellant_index, propellant_mass, stage)
     insulation_mass = get_insulation_mass(propellant_index, propellant_mass, stage)
-    casing_mass = get_casing_mass(propellant_index, propellant_mass)
+    casing_mass = get_casing_mass(propellant_index, propellant_mass, stage)
     engine_mass, n_engines = get_engine_mass(propellant_index, thrust_required, stage)
     gimbal_mass = get_gimbal_mass(propellant_index, thrust_required, stage)
     thrust_structure_mass =2.55*10**-4*thrust_required
@@ -59,7 +58,23 @@ def update_stage(current_propellant_mass, current_stage_mass, deltaV, propellant
     aft_fairing_mass = get_aft_fairing_mass(stage)
     inert_mass = (1 + MARGIN)*(tank_mass + insulation_mass + casing_mass + engine_mass + gimbal_mass + thrust_structure_mass + avionics_mass + wiring_mass + stage_payload_fairing_mass+ intertank_mass + interstage_mass + aft_fairing_mass)
     total_stage_mass = inert_mass + propellant_mass
-    return total_stage_mass
+    stage_vars = {
+        "tank_mass": tank_mass,
+        "insulation_mass": insulation_mass,
+        "casing_mass": casing_mass,
+        "engine_mass": engine_mass,
+        "gimbal_mass": gimbal_mass,
+        "thrust_structure_mass": thrust_structure_mass,
+        "avionics_mass": avionics_mass,
+        "wiring_mass": wiring_mass,
+        "intertank_mass": intertank_mass,
+        "interstage_mass": interstage_mass,
+        "aft_fairing_mass": aft_fairing_mass,
+        "n_engines": n_engines,
+        "stage_length": stage_length,
+        "propellant_mass": propellant_mass,
+    }
+    return total_stage_mass, stage_vars
 
 
 def get_stage_length(tank_length, stage):
@@ -79,7 +94,6 @@ def get_stage_diameter(stage):
     return DIAMETER[stage - 1]
 
 def get_fairing_mass(stage, length):
-    """Cylindrical fairing mass (kg) at the stage diameter: 4.95*A^1.15, A = pi*d*h."""
     return 4.95*(math.pi*get_stage_diameter(stage)*length)**1.15
 
 def get_interstage_mass(stage):
@@ -111,15 +125,21 @@ def get_intertank_fairing_mass(propellant_index, propellant_mass, stage):
     return get_fairing_mass(stage, cap_heights)
 
 def is_solid(propellant_index):
+    #Simple return to clean up if statements for weird solid edge cases
     return PROPELLANT_PAIRS[propellant_index][1] is None
 
-def get_casing_mass(propellant_index, propellant_mass):
-    return 0.135*propellant_mass if is_solid(propellant_index) else 0.0
+def get_casing_mass(propellant_index, propellant_mass, stage):
+    if is_solid(propellant_index):
+        return 0.135*propellant_mass
+    else:
+        return 0.0
 
 def get_tank_mass(propellant_index, propellant_mass, stage):
     tank_mass = 0.0
     tank_length = 0.0
     if is_solid(propellant_index):
+        volume = propellant_mass/DENSITY[PROPELLANT_PAIRS[propellant_index][0]]
+        tank_length += get_tank_geometry(volume, stage)[0]
         return tank_mass, tank_length
     for name, mass in get_component_masses(propellant_index, propellant_mass).items():
         volume = mass/DENSITY[name]
@@ -136,7 +156,7 @@ def get_insulation_mass(propellant_index, propellant_mass, stage):
     return insulation_mass
     
 def get_engine_mass(propellant_index, thrust_required, stage):
-    if propellant_index == 3:
+    if is_solid(propellant_index):
         return 0.0, 0
     if stage == 1:
         thrust_table = THRUST_PER_MOTOR_STAGE_1 
@@ -167,45 +187,54 @@ def get_propellant_mass(stage, propellant_index, current_stage_mass, deltaV):
         isp = ISP_SEA[propellant_index]
     else:
         isp = ISP_VAC[propellant_index]
-    return( current_stage_mass*(1 - math.exp(-deltaV / (isp*G0))))
-
-
-
+    return(current_stage_mass*(1 - math.exp(-deltaV / (isp*G0))))
 
 #adapted code from matlab explicit solution
-def initialize(delta_v1, stage1_idx, stage2_idx):
-    isp_sea = ISP_SEA[stage1_idx]
-    isp_vac = ISP_VAC[stage2_idx]
-    sigma1 = SIGMA[stage1_idx]
-    sigma2 = SIGMA[stage2_idx]
-    e1 = math.exp(delta_v1 / (G0 * isp_sea))
-    e2 = math.exp((delta_v1 - DV_TOTAL) / (G0 * isp_vac))
-    denom = (sigma1 * e1 - 1.0) * (sigma2 - e2)
-    m1 = (M_PAYLOAD * (e1 - 1.0) + M_PAYLOAD * sigma1 * e1) / denom
-    m2 = -(M_PAYLOAD - M_PAYLOAD * e2) / (sigma2 - e2) - (M_PAYLOAD * sigma2) / (sigma2 - e2)
-    return [m1, m2]
+# def initialize(delta_v1, stage1_idx, stage2_idx):
+#     isp_sea = ISP_SEA[stage1_idx]
+#     isp_vac = ISP_VAC[stage2_idx]
+#     sigma1 = SIGMA[stage1_idx]
+#     sigma2 = SIGMA[stage2_idx]
+#     e1 = math.exp(delta_v1 / (G0 * isp_sea))
+#     e2 = math.exp((delta_v1 - DV_TOTAL) / (G0 * isp_vac))
+#     denom = (sigma1 * e1 - 1.0) * (sigma2 - e2)
+#     m1 = (M_PAYLOAD * (e1 - 1.0) + M_PAYLOAD * sigma1 * e1) / denom
+#     m2 = -(M_PAYLOAD - M_PAYLOAD * e2) / (sigma2 - e2) - (M_PAYLOAD * sigma2) / (sigma2 - e2)
+#     return [m1, m2]
 
 
-def converge_stage(stage_mass_guess, above_mass, deltaV, propellant_index, stage, tol=1e-6, max_iter=200):
-    propellant = 1 
+def converge_stage(above_mass, deltaV, propellant_index, stage, tol=1e-6, max_iter=200): 
     m0 = 1  
     for _ in range(max_iter):
-        new_propellant = get_propellant_mass(stage, propellant_index, m0, deltaV)
-        new_stage_mass = update_stage(propellant, m0, deltaV, propellant_index, stage, above_mass)
+        new_stage_mass, stage_vars = update_stage(m0, deltaV, propellant_index, stage, above_mass)
         new_m0 = new_stage_mass + above_mass
         if abs(new_m0 - m0) < tol*m0:
-            return new_stage_mass, new_propellant
-        m0, propellant = new_m0, new_propellant
+            return new_stage_mass, stage_vars
+        m0 = new_m0
     raise RuntimeError("stage did not converge") 
 
 
 def size_vehicle(delta_v1, stage1_idx, stage2_idx):
     delta_v2 = DV_TOTAL - delta_v1
-    guess1, guess2 = initialize(delta_v1, stage1_idx, stage2_idx)   
-    stage2_mass, _ = converge_stage(guess2, M_PAYLOAD, delta_v2, stage2_idx, 2) 
-    stage1_mass, _ = converge_stage(guess1, stage2_mass + M_PAYLOAD, delta_v1, stage1_idx, 1)
+    #guess1, guess2 = initialize(delta_v1, stage1_idx, stage2_idx)   
+    stage2_mass, stage2_vars = converge_stage(M_PAYLOAD, delta_v2, stage2_idx, 2) 
+    stage1_mass, stage1_vars = converge_stage(stage2_mass + M_PAYLOAD, delta_v1, stage1_idx, 1)
+    if (stage1_vars["stage_length"]+stage2_vars["stage_length"]+PAYLOAD_H)/DIAMETER[0] > LD_MAX:
+        raise RuntimeError("stage length exceeds limit"+" stage1_length: "+str(stage1_vars["stage_length"])+" stage2_length: "+str(stage2_vars["stage_length"]))
+    if (stage1_vars["n_engines"])*(EXHAUST_DIAMETER_STAGE_1[stage1_idx]/2)**2*math.pi > (DIAMETER[0]/2)**2*math.pi:
+        raise RuntimeError("stage 1 engine diameter exceeds limit")
+    if (stage2_vars["n_engines"])*(EXHAUST_DIAMETER_STAGE_2[stage2_idx]/2)**2*math.pi > (DIAMETER[1]/2)**2*math.pi:
+        raise RuntimeError("stage 2 engine diameter exceeds limit")
     return stage1_mass, stage2_mass, stage1_mass + stage2_mass + M_PAYLOAD
 
 
 if __name__ == "__main__":
-    print(size_vehicle(4000, 1, 1))
+    #itterate from deltaV = 1000 to 10000
+    for DIAMETER[0] in np.linspace(5.2, 15, 10):
+        DIAMETER[1] = DIAMETER[0]
+        for delta_v1 in np.linspace(1000, 12000, 100):
+            # catch the unconverged error and print it normally
+            try:
+                print(size_vehicle(delta_v1, 1, 1))
+            except RuntimeError as e:
+                print(e)
