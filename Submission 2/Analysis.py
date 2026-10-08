@@ -229,6 +229,15 @@ def size_vehicle(delta_v1, stage1_idx, stage2_idx):
     return stage1_mass, stage2_mass, stage1_mass + stage2_mass + M_PAYLOAD, cost, stage1_vars, stage2_vars
 
 
+def print_vehicle(diameter, result):
+    stage1_mass, stage2_mass, total_mass, cost, stage1_vars, stage2_vars = result
+    print("diameter:", diameter)
+    for name in stage1_vars:
+        print(name, round(stage1_vars[name], 1), round(stage2_vars[name], 1))
+    print("stage masses:", round(stage1_mass), round(stage2_mass))
+    print("total mass:", round(total_mass), "cost:", round(cost))
+
+
 if __name__ == "__main__":
     stage_1_idx = 1
     stage_2_idx = 0
@@ -245,8 +254,8 @@ if __name__ == "__main__":
             print(e)
     #finds the minimum overall mass with the corresponding diameter
     min_mass_d, min_mass_r = min(results, key=lambda r: r[1][2])
-    print("Minimum overall mass:", min_mass_r[2]/1000, "at diameter:", min_mass_d)
-    print(min_mass_r)
+    print("\n\n\nMinimum mass results:")
+    print_vehicle(min_mass_d, min_mass_r)
     min_cost_d, min_cost_r = min(results, key=lambda r: r[1][3])
-    print("Minimum cost:", min_cost_r[3]/1000, "at diameter:", min_cost_d)
-    print(min_cost_r)
+    print("\n\n\nMinimum cost results:")
+    print_vehicle(min_cost_d, min_cost_r)
