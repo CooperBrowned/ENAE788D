@@ -28,7 +28,6 @@ PROPELLANT_PAIRS = [("LCH4", "LOX"), ("LH2", "LOX"), ("RP1", "LOX"), ("APCP", No
 
 #assumptions
 DIAMETER = [5.2,5.2]
-INTERSTAGE_LENGTH = 3  
 AFT_FAIRING_LENGTH = 3 
 # assuming wiring length is stage 1: tank + aft fairing; stage 2: tank + engine section + payload fairing (no double counting)
 # assuming both aft and interstage fairings stay attached to first stage
@@ -101,7 +100,9 @@ def get_interstage_mass(stage):
     # both fairings are carried by stage 1 only, so stage 2 has none
     if stage != 1:
         return 0.0
-    return get_fairing_mass(stage, INTERSTAGE_LENGTH)
+    #find interstage length based on hemispherical tank geometry to hemisphere + engine length
+    interstage_length = ENGINE_LENGTH + get_stage_diameter(stage)
+    return get_fairing_mass(stage, interstage_length)
 
 def get_aft_fairing_mass(stage):
     if stage != 1:
