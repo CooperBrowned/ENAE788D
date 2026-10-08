@@ -156,8 +156,6 @@ def get_insulation_mass(propellant_index, propellant_mass, stage):
     return insulation_mass
     
 def get_engine_mass(propellant_index, thrust_required, stage):
-    if is_solid(propellant_index):
-        return 0.0, 0
     if stage == 1:
         thrust_table = THRUST_PER_MOTOR_STAGE_1 
     else:
@@ -170,6 +168,8 @@ def get_engine_mass(propellant_index, thrust_required, stage):
     expansion_ratio = expansion_table[propellant_index]
     n_engines = math.ceil(thrust_required/thrust_per_motor)
     mass_per_engine = (7.81e-4*thrust_per_motor+ 3.37e-5*thrust_per_motor*math.sqrt(expansion_ratio)+ 59)
+    if is_solid(propellant_index):
+        return 0.0, n_engines
     return n_engines*mass_per_engine, n_engines
 
 def get_gimbal_mass(propellant_index, thrust_required, stage):
@@ -219,8 +219,8 @@ def size_vehicle(delta_v1, stage1_idx, stage2_idx):
     #guess1, guess2 = initialize(delta_v1, stage1_idx, stage2_idx)   
     stage2_mass, stage2_vars = converge_stage(M_PAYLOAD, delta_v2, stage2_idx, 2) 
     stage1_mass, stage1_vars = converge_stage(stage2_mass + M_PAYLOAD, delta_v1, stage1_idx, 1)
-    if (stage1_vars["stage_length"]+stage2_vars["stage_length"]+PAYLOAD_H)/DIAMETER[0] > LD_MAX:
-        raise RuntimeError("stage length exceeds limit"+" stage1_length: "+str(stage1_vars["stage_length"])+" stage2_length: "+str(stage2_vars["stage_length"]))
+    if (stage1_vars["stage_length"]+stage2_vars["stage_length"])/DIAMETER[0] > LD_MAX:
+        raise RuntimeError("stage L/D exceeds limit"+" stage1_length: "+str(stage1_vars["stage_length"])+" stage2_length: "+str(stage2_vars["stage_length"]))
     if (stage1_vars["n_engines"])*(EXHAUST_DIAMETER_STAGE_1[stage1_idx]/2)**2*math.pi > (DIAMETER[0]/2)**2*math.pi:
         raise RuntimeError("stage 1 engine diameter exceeds limit")
     if (stage2_vars["n_engines"])*(EXHAUST_DIAMETER_STAGE_2[stage2_idx]/2)**2*math.pi > (DIAMETER[1]/2)**2*math.pi:
