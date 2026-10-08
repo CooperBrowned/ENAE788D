@@ -7,7 +7,7 @@ DV_TOTAL = 12300
 M_PAYLOAD = 26000         
 PAYLOAD_D = 5.2              
 PAYLOAD_H = 13   
-LD_MAX = 13               
+LD_MAX = 13         
 TW_MIN = {1: 1.3, 2: 0.76}   
 MARGIN = 0.30 
 ENGINE_LENGTH = 3  
@@ -73,6 +73,7 @@ def update_stage(current_stage_mass, deltaV, propellant_index, stage, payload_ma
         "n_engines": n_engines,
         "stage_length": stage_length,
         "propellant_mass": propellant_mass,
+        "payload_fairing_mass": stage_payload_fairing_mass,
     }
     return total_stage_mass, stage_vars
 
@@ -246,7 +247,7 @@ if __name__ == "__main__":
     results = []
     #itterate from deltaV = 1000 to 10000
     
-    for DIAMETER[0] in np.linspace(5.2, 15, 100):
+    for DIAMETER[0] in np.linspace(5.2, 20, 100):
         DIAMETER[1] = DIAMETER[0]
         try:
             results.append([DIAMETER[0],size_vehicle(deltaV1, stage_1_idx, stage_2_idx)])
