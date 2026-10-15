@@ -290,11 +290,11 @@ if __name__ == "__main__":
     stage_2_idx = 3
 
     #deltaV1 = 6400
-    deltaV1 = 7760
+    deltaV1 = 7550
     results = []
     #itterate from deltaV = 1000 to 10000
     #for deltaV1 in np.linspace(1000, 10000, 100):
-    for DIAMETER[0] in np.linspace(5.2, 30, 100):
+    for DIAMETER[0] in np.linspace(5.2, 40, 100):
         #for DIAMETER[1] in np.linspace(5.2, 20, 100):
         DIAMETER[1] = DIAMETER[0]
         try:
