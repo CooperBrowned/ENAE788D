@@ -294,7 +294,7 @@ if __name__ == "__main__":
     results = []
     #itterate from deltaV = 1000 to 10000
     #for deltaV1 in np.linspace(1000, 10000, 100):
-    for DIAMETER[0] in np.linspace(5.2, 40, 100):
+    for DIAMETER[0] in np.linspace(5.2, 30, 100):
         #for DIAMETER[1] in np.linspace(5.2, 20, 100):
         DIAMETER[1] = DIAMETER[0]
         try:
