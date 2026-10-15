@@ -16,6 +16,7 @@ THRUST_PER_MOTOR_STAGE_1 = [2.26, 1.86, 1.92, 4.5, 1.75]
 THRUST_PER_MOTOR_STAGE_2 = [0.745, 0.099, 0.061, 2.94, 0.067]
 EXHAUST_DIAMETER_STAGE_1 = [2.4, 2.4, 3.7, 6.6, 1.5]
 EXHAUST_DIAMETER_STAGE_2 = [1.5, 2.15, 0.92, 2.34, 1.13]
+EXHAUST_DIAMETER = [EXHAUST_DIAMETER_STAGE_1, EXHAUST_DIAMETER_STAGE_2]
 CHAMBER_PRESSURE_STAGE_1 = [35.16, 20.64, 25.8, 10.5, 15.7]
 CHAMBER_PRESSURE_STAGE_2 = [10.1, 4.2, 6.77, 5.0, 14.7]
 NOZZLE_EXPANSION_STAGE_1 = [34.34, 78.0, 37.0, 16.0, 26.2]
@@ -204,49 +205,49 @@ def get_propellant_mass(stage, propellant_index, current_stage_mass, deltaV):
 #     m2 = -(M_PAYLOAD - M_PAYLOAD * e2) / (sigma2 - e2) - (M_PAYLOAD * sigma2) / (sigma2 - e2)
 #     return [m1, m2]
 
-def check_engines(n_engines, stage_idx):
-    #approximations for small number of engines, then move to area calculation
+def check_engines(n_engines, stage_idx, stage):
+    #analytical solution for small number of engines, then move to area approximation 
     if n_engines == 1:
-        if (EXHAUST_DIAMETER_STAGE_1[stage_idx] > DIAMETER[stage_idx]):
+        if (EXHAUST_DIAMETER[stage][stage_idx] > DIAMETER[stage]):
             raise RuntimeError("engine diameter exceeds limit")
     if n_engines == 2:
-        if (EXHAUST_DIAMETER_STAGE_1[stage_idx]*2 > DIAMETER[stage_idx]):
+        if (EXHAUST_DIAMETER[stage][stage_idx]*2 > DIAMETER[stage]):
             raise RuntimeError("engine diameter exceeds limit")
     if n_engines == 3:
-        if (EXHAUST_DIAMETER_STAGE_1[stage_idx]*2.155 > DIAMETER[stage_idx]):
+        if (EXHAUST_DIAMETER[stage][stage_idx]*2.155 > DIAMETER[stage]):
             raise RuntimeError("engine diameter exceeds limit") 
     if n_engines == 4:
-        if (EXHAUST_DIAMETER_STAGE_1[stage_idx]*2.414 > DIAMETER[stage_idx]):
+        if (EXHAUST_DIAMETER[stage][stage_idx]*2.414 > DIAMETER[stage]):
             raise RuntimeError("engine diameter exceeds limit")    
     if n_engines == 5:
-            if (EXHAUST_DIAMETER_STAGE_1[stage_idx]*2.701 > DIAMETER[stage_idx]):
-                raise RuntimeError("engine diameter exceeds limit")     
+        if (EXHAUST_DIAMETER[stage][stage_idx]*2.701 > DIAMETER[stage]):
+            raise RuntimeError("engine diameter exceeds limit")     
     if n_engines == 6:
-        if (EXHAUST_DIAMETER_STAGE_1[stage_idx]*3.0 > DIAMETER[stage_idx]):
+        if (EXHAUST_DIAMETER[stage][stage_idx]*3.0 > DIAMETER[stage]):
             raise RuntimeError("engine diameter exceeds limit")
     if n_engines == 7:
-        if (EXHAUST_DIAMETER_STAGE_1[stage_idx]*3.0 > DIAMETER[stage_idx]):
+        if (EXHAUST_DIAMETER[stage][stage_idx]*3.0 > DIAMETER[stage]):
             raise RuntimeError("engine diameter exceeds limit")  
     if n_engines == 8:
-        if (EXHAUST_DIAMETER_STAGE_1[stage_idx]*3.304> DIAMETER[stage_idx]):
+        if (EXHAUST_DIAMETER[stage][stage_idx]*3.304> DIAMETER[stage]):
             raise RuntimeError("engine diameter exceeds limit")
     if n_engines == 9:
-        if (EXHAUST_DIAMETER_STAGE_1[stage_idx]*3.613> DIAMETER[stage_idx]):
+        if (EXHAUST_DIAMETER[stage][stage_idx]*3.613> DIAMETER[stage]):
             raise RuntimeError("engine diameter exceeds limit")
     if n_engines == 10:
-        if (EXHAUST_DIAMETER_STAGE_1[stage_idx]*3.813> DIAMETER[stage_idx]):
+        if (EXHAUST_DIAMETER[stage][stage_idx]*3.813> DIAMETER[stage]):
             raise RuntimeError("engine diameter exceeds limit")
     if n_engines == 11:
-        if (EXHAUST_DIAMETER_STAGE_1[stage_idx]*3.923> DIAMETER[stage_idx]):
+        if (EXHAUST_DIAMETER[stage][stage_idx]*3.923> DIAMETER[stage]):
             raise RuntimeError("engine diameter exceeds limit")
     if n_engines == 12:
-        if (EXHAUST_DIAMETER_STAGE_1[stage_idx]*4.03> DIAMETER[stage_idx]):
+        if (EXHAUST_DIAMETER[stage][stage_idx]*4.03> DIAMETER[stage]):
             raise RuntimeError("engine diameter exceeds limit")
     if n_engines == 13:
-        if (EXHAUST_DIAMETER_STAGE_1[stage_idx]*4.236> DIAMETER[stage_idx]):
+        if (EXHAUST_DIAMETER[stage][stage_idx]*4.236> DIAMETER[stage]):
             raise RuntimeError("engine diameter exceeds limit")
-    else:
-        if n_engines*(EXHAUST_DIAMETER_STAGE_1[stage_idx]/2)**2*math.pi > (DIAMETER[stage_idx]/2)**2*math.pi*0.8:
+    if n_engines > 13:
+        if n_engines*(EXHAUST_DIAMETER[stage][stage_idx]/2)**2*math.pi > (DIAMETER[stage]/2)**2*math.pi*0.8:
             raise RuntimeError("engine diameter exceeds limit")
 
 
@@ -268,8 +269,8 @@ def size_vehicle(delta_v1, stage1_idx, stage2_idx):
     stage1_mass, stage1_vars = converge_stage(stage2_mass + M_PAYLOAD, delta_v1, stage1_idx, 1)
     if (stage1_vars["stage_length"]+stage2_vars["stage_length"])/DIAMETER[0] > LD_MAX:
         raise RuntimeError("stage L/D exceeds limit"+" stage1_length: "+str(stage1_vars["stage_length"])+" stage2_length: "+str(stage2_vars["stage_length"]))
-    check_engines(stage1_vars["n_engines"], stage1_idx)
-    check_engines(stage2_vars["n_engines"], stage2_idx)
+    check_engines(stage1_vars["n_engines"], stage1_idx, 0)
+    check_engines(stage2_vars["n_engines"], stage2_idx, 1)
     cost = 13.52 * (stage1_mass - stage1_vars["propellant_mass"])**0.55 + 13.52 * (stage2_mass - stage2_vars["propellant_mass"])**0.55
     return stage1_mass, stage2_mass, stage1_mass + stage2_mass + M_PAYLOAD, cost, stage1_vars, stage2_vars
 
@@ -300,11 +301,14 @@ if __name__ == "__main__":
             #print(e)
             pass
     #finds the minimum overall mass with the corresponding diameter
-    min_mass_d1, min_mass_d2, min_mass_r, min_mass_dv1 = min(results, key=lambda r: r[2][2])
-    print("\n\n\nMinimum mass results:")
-    print("Delta V1:", min_mass_dv1)
-    print_vehicle(min_mass_d1, min_mass_d2, min_mass_r)
-    min_cost_d1, min_cost_d2, min_cost_r, min_cost_dv1 = min(results, key=lambda r: r[2][3])
-    print("\n\n\nMinimum cost results:")
-    print("Delta V1:", min_cost_dv1)
-    print_vehicle(min_cost_d1, min_cost_d2, min_cost_r)
+    if not results:
+        print("No valid configurations found.")
+    else:
+        min_mass_d1, min_mass_d2, min_mass_r, min_mass_dv1 = min(results, key=lambda r: r[2][2])
+        print("\n\n\nMinimum mass results:")
+        print("Delta V1:", min_mass_dv1)
+        print_vehicle(min_mass_d1, min_mass_d2, min_mass_r)
+        min_cost_d1, min_cost_d2, min_cost_r, min_cost_dv1 = min(results, key=lambda r: r[2][3])
+        print("\n\n\nMinimum cost results:")
+        print("Delta V1:", min_cost_dv1)
+        print_vehicle(min_cost_d1, min_cost_d2, min_cost_r)
