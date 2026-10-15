@@ -41,6 +41,7 @@ PAYLOAD_FAIRING_LENGTH = PAYLOAD_H + NOSECONE_HEIGHT  # cylinder + nosecone (m)
 payload_fairing_mass = 4.95*((PAYLOAD_D*math.pi*PAYLOAD_H) + (math.pi*PAYLOAD_D/2)*math.sqrt((PAYLOAD_D/2)**2+(NOSECONE_HEIGHT)**2))**1.15
 
 def update_stage(current_stage_mass, deltaV, propellant_index, stage, payload_mass):
+    # Cooper, Ethan, Leela, Nihira, Colby
     propellant_mass = get_propellant_mass(stage,propellant_index,current_stage_mass,deltaV)
     thrust_required = current_stage_mass*G0*TW_MIN[stage]
     tank_mass, tank_length = get_tank_mass(propellant_index, propellant_mass, stage)
@@ -79,12 +80,14 @@ def update_stage(current_stage_mass, deltaV, propellant_index, stage, payload_ma
 
 
 def get_stage_length(tank_length, stage):
+    # Cooper
     # length used for the wiring MER; each section is counted once, so upper stages are not included
     if stage == 1:
         return tank_length + AFT_FAIRING_LENGTH
     return tank_length + ENGINE_LENGTH + PAYLOAD_FAIRING_LENGTH
 
 def get_component_masses(propellant_index, propellant_mass):
+    # Ethan
     fuel, ox = PROPELLANT_PAIRS[propellant_index]
     of_ratio = FUEL_MIXTURE_MASS_RATIO[propellant_index]
     if ox is None:
@@ -98,6 +101,7 @@ def get_fairing_mass(stage, length):
     return 4.95*(math.pi*get_stage_diameter(stage)*length)**1.15
 
 def get_interstage_mass(stage):
+    # Nihira
     # both fairings are carried by stage 1 only, so stage 2 has none
     if stage != 1:
         return 0.0
@@ -106,11 +110,13 @@ def get_interstage_mass(stage):
     return get_fairing_mass(stage, interstage_length)
 
 def get_aft_fairing_mass(stage):
+    # Nihira
     if stage != 1:
         return 0.0
     return get_fairing_mass(stage, AFT_FAIRING_LENGTH)
 
 def get_tank_geometry(volume, stage):
+    # Ethan
     max_radius = get_stage_diameter(stage)/2
     sphere_radius = (3*volume/(4*math.pi))**(1/3)
     if sphere_radius <= max_radius:
@@ -121,6 +127,7 @@ def get_tank_geometry(volume, stage):
     return length, area, max_radius
 
 def get_intertank_fairing_mass(propellant_index, propellant_mass, stage):
+    # Nihira
     if is_solid(propellant_index):
         return 0.0
     cap_heights = sum(get_tank_geometry(mass/DENSITY[name], stage)[2]
@@ -128,6 +135,7 @@ def get_intertank_fairing_mass(propellant_index, propellant_mass, stage):
     return get_fairing_mass(stage, cap_heights)
 
 def is_solid(propellant_index):
+    #Cooper
     #Simple return to clean up if statements for weird solid edge cases
     return PROPELLANT_PAIRS[propellant_index][1] is None
 
@@ -159,6 +167,7 @@ def get_insulation_mass(propellant_index, propellant_mass, stage):
     return insulation_mass
     
 def get_engine_mass(propellant_index, thrust_required, stage):
+    # Cooper
     if stage == 1:
         thrust_table = THRUST_PER_MOTOR_STAGE_1 
     else:
@@ -176,6 +185,7 @@ def get_engine_mass(propellant_index, thrust_required, stage):
     return n_engines*mass_per_engine, n_engines
 
 def get_gimbal_mass(propellant_index, thrust_required, stage):
+    # Leela
     if stage == 1:
         thrust_per_motor = THRUST_PER_MOTOR_STAGE_1[propellant_index]*1e6  # MN -> N
         chamber_pressure = CHAMBER_PRESSURE_STAGE_1[propellant_index]*1e6  # MPa -> Pa
@@ -192,20 +202,8 @@ def get_propellant_mass(stage, propellant_index, current_stage_mass, deltaV):
         isp = ISP_VAC[propellant_index]
     return(current_stage_mass*(1 - math.exp(-deltaV / (isp*G0))))
 
-#adapted code from matlab explicit solution
-# def initialize(delta_v1, stage1_idx, stage2_idx):
-#     isp_sea = ISP_SEA[stage1_idx]
-#     isp_vac = ISP_VAC[stage2_idx]
-#     sigma1 = SIGMA[stage1_idx]
-#     sigma2 = SIGMA[stage2_idx]
-#     e1 = math.exp(delta_v1 / (G0 * isp_sea))
-#     e2 = math.exp((delta_v1 - DV_TOTAL) / (G0 * isp_vac))
-#     denom = (sigma1 * e1 - 1.0) * (sigma2 - e2)
-#     m1 = (M_PAYLOAD * (e1 - 1.0) + M_PAYLOAD * sigma1 * e1) / denom
-#     m2 = -(M_PAYLOAD - M_PAYLOAD * e2) / (sigma2 - e2) - (M_PAYLOAD * sigma2) / (sigma2 - e2)
-#     return [m1, m2]
-
 def check_engines(n_engines, stage_idx, stage):
+    # Cooper
     #analytical solution for small number of engines, then move to area approximation 
     if n_engines == 1:
         if (EXHAUST_DIAMETER[stage][stage_idx] > DIAMETER[stage]):
@@ -251,7 +249,8 @@ def check_engines(n_engines, stage_idx, stage):
             raise RuntimeError("engine diameter exceeds limit")
 
 
-def converge_stage(above_mass, deltaV, propellant_index, stage, tol=1e-6, max_iter=200): 
+def converge_stage(above_mass, deltaV, propellant_index, stage, tol=1e-6, max_iter=2000): 
+    # Cooper
     m0 = 1  
     for _ in range(max_iter):
         new_stage_mass, stage_vars = update_stage(m0, deltaV, propellant_index, stage, above_mass)
@@ -263,8 +262,8 @@ def converge_stage(above_mass, deltaV, propellant_index, stage, tol=1e-6, max_it
 
 
 def size_vehicle(delta_v1, stage1_idx, stage2_idx):
+    # Cooper
     delta_v2 = DV_TOTAL - delta_v1
-    #guess1, guess2 = initialize(delta_v1, stage1_idx, stage2_idx)   
     stage2_mass, stage2_vars = converge_stage(M_PAYLOAD, delta_v2, stage2_idx, 2) 
     stage1_mass, stage1_vars = converge_stage(stage2_mass + M_PAYLOAD, delta_v1, stage1_idx, 1)
     if (stage1_vars["stage_length"]+stage2_vars["stage_length"])/DIAMETER[0] > LD_MAX:
@@ -276,6 +275,7 @@ def size_vehicle(delta_v1, stage1_idx, stage2_idx):
 
 
 def print_vehicle(diameter1, diameter2, result):
+    # Colby
     stage1_mass, stage2_mass, total_mass, cost, stage1_vars, stage2_vars = result
     print("diameter_1:", diameter1, "diameter_2:", diameter2)
     for name in stage1_vars:
@@ -287,13 +287,14 @@ def print_vehicle(diameter1, diameter2, result):
 if __name__ == "__main__":
     #0 = LCH4/LOX, 1 = LH2/LOX, 2 = RP1/LOX, 3 = Solid, 4 = UDMH/N2O4
     stage_1_idx = 1
-    stage_2_idx = 0
-    deltaV1 = 5720
+    stage_2_idx = 3
+
     #deltaV1 = 6400
+    deltaV1 = 7760
     results = []
     #itterate from deltaV = 1000 to 10000
     #for deltaV1 in np.linspace(1000, 10000, 100):
-    for DIAMETER[0] in np.linspace(5.2, 20, 100):
+    for DIAMETER[0] in np.linspace(5.2, 40, 100):
         #for DIAMETER[1] in np.linspace(5.2, 20, 100):
         DIAMETER[1] = DIAMETER[0]
         try:
