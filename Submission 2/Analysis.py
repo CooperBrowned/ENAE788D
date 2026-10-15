@@ -135,7 +135,7 @@ def get_intertank_fairing_mass(propellant_index, propellant_mass, stage):
     return get_fairing_mass(stage, cap_heights)
 
 def is_solid(propellant_index):
-    #Cooper
+    # Leela
     #Simple return to clean up if statements for weird solid edge cases
     return PROPELLANT_PAIRS[propellant_index][1] is None
 
@@ -146,6 +146,7 @@ def get_casing_mass(propellant_index, propellant_mass, stage):
         return 0.0
 
 def get_tank_mass(propellant_index, propellant_mass, stage):
+    # Cooper
     tank_mass = 0.0
     tank_length = 0.0
     if is_solid(propellant_index):
@@ -159,6 +160,7 @@ def get_tank_mass(propellant_index, propellant_mass, stage):
     return tank_mass, tank_length
 
 def get_insulation_mass(propellant_index, propellant_mass, stage):
+    # Cooper
     insulation_density = {"LH2": 2.88, "LOX": 1.123, "LCH4": 1.123} 
     insulation_mass = 0.0
     for name, mass in get_component_masses(propellant_index, propellant_mass).items():
@@ -196,6 +198,7 @@ def get_gimbal_mass(propellant_index, thrust_required, stage):
     return n_motors*237.8*(thrust_per_motor/chamber_pressure)**0.9375
 
 def get_propellant_mass(stage, propellant_index, current_stage_mass, deltaV):
+    # Leela
     if stage == 1:
         isp = ISP_SEA[propellant_index]
     else:
@@ -203,7 +206,7 @@ def get_propellant_mass(stage, propellant_index, current_stage_mass, deltaV):
     return(current_stage_mass*(1 - math.exp(-deltaV / (isp*G0))))
 
 def check_engines(n_engines, stage_idx, stage):
-    # Cooper
+    # Colby
     #analytical solution for small number of engines, then move to area approximation 
     if n_engines == 1:
         if (EXHAUST_DIAMETER[stage][stage_idx] > DIAMETER[stage]):
