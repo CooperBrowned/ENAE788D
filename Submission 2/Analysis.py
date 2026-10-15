@@ -285,6 +285,7 @@ def print_vehicle(diameter1, diameter2, result):
 
 
 if __name__ == "__main__":
+    #0 = LCH4/LOX, 1 = LH2/LOX, 2 = RP1/LOX, 3 = Solid, 4 = UDMH/N2O4
     stage_1_idx = 1
     stage_2_idx = 0
     deltaV1 = 5720
